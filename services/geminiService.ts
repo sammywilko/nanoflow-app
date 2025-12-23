@@ -2,8 +2,46 @@
 import { GoogleGenAI, Type, GenerateContentResponse } from "@google/genai";
 import { AnalysisResponse, ProjectPlan } from "../types";
 
-// Helper to ensure we always get the latest key from the environment
-const getAI = () => new GoogleGenAI({ apiKey: process.env.API_KEY });
+// API key management - supports both env var and localStorage
+let cachedApiKey: string | null = null;
+
+export const setApiKey = (key: string) => {
+  cachedApiKey = key;
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('gemini_api_key', key);
+  }
+};
+
+export const getApiKey = (): string | null => {
+  if (cachedApiKey) return cachedApiKey;
+
+  // Try Vite env var
+  if (import.meta.env.VITE_GEMINI_API_KEY) {
+    return import.meta.env.VITE_GEMINI_API_KEY;
+  }
+
+  // Try localStorage
+  if (typeof window !== 'undefined') {
+    const stored = localStorage.getItem('gemini_api_key');
+    if (stored) {
+      cachedApiKey = stored;
+      return stored;
+    }
+  }
+
+  return null;
+};
+
+export const hasApiKey = (): boolean => {
+  return !!getApiKey();
+};
+
+// Helper to ensure we always get the latest key
+const getAI = () => {
+  const key = getApiKey();
+  if (!key) throw new Error('No API key configured');
+  return new GoogleGenAI({ apiKey: key });
+};
 
 // MODELS
 const VISION_MODEL = 'gemini-3-pro-image-preview'; // Nano Banana Pro

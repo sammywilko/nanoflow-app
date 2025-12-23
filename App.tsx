@@ -2,13 +2,14 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { CanvasItem, ItemType, Point, ViewState, SelectionBox, ProjectPlan, ShotConcept } from './types';
 import * as geminiService from './services/geminiService';
+import { setApiKey, hasApiKey as checkHasApiKey } from './services/geminiService';
 import { screenToWorld, getSmartPosition, generateId, snapToGrid, isIntersecting } from './utils/canvasUtils';
 import CanvasItemComponent from './components/CanvasItem';
 import Toolbar from './components/Toolbar';
 import ProjectSidebar from './components/ProjectSidebar';
 import PropertiesPanel from './components/PropertiesPanel';
 import PromptBar from './components/PromptBar';
-import { Key } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 
 // Constants
 const MIN_SCALE = 0.1;
@@ -39,16 +40,18 @@ const App: React.FC = () => {
   
   // API Key Check
   const [hasApiKey, setHasApiKey] = useState(false);
+  const [apiKeyInput, setApiKeyInput] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Rubber Band Selection
   const [selectionBox, setSelectionBox] = useState<SelectionBox | null>(null);
-  
+
   // Refs
   const containerRef = useRef<HTMLDivElement>(null);
-  const dragInfo = useRef<{ 
+  const dragInfo = useRef<{
     mode: 'IDLE' | 'DRAG_ITEM' | 'PAN' | 'SELECT_BOX';
-    startX: number; 
-    startY: number; 
+    startX: number;
+    startY: number;
     initialView: ViewState;
     initialItemPos: Map<string, Point>;
     targetId: string | null;
@@ -66,26 +69,16 @@ const App: React.FC = () => {
   // --- Initialization ---
 
   useEffect(() => {
-    async function checkKey() {
-      if ((window as any).aistudio && (window as any).aistudio.hasSelectedApiKey) {
-        const has = await (window as any).aistudio.hasSelectedApiKey();
-        setHasApiKey(has);
-      } else {
-         if (process.env.API_KEY) {
-            setHasApiKey(true);
-         }
-      }
-    }
-    checkKey();
+    // Check if API key exists (from env or localStorage)
+    setHasApiKey(checkHasApiKey());
   }, []);
 
-  const handleSelectKey = async () => {
-      if ((window as any).aistudio && (window as any).aistudio.openSelectKey) {
-          const success = await (window as any).aistudio.openSelectKey();
-          if (success) {
-              setHasApiKey(true);
-          }
-      }
+  const handleSubmitApiKey = () => {
+    if (!apiKeyInput.trim()) return;
+    setIsSubmitting(true);
+    setApiKey(apiKeyInput.trim());
+    setHasApiKey(true);
+    setIsSubmitting(false);
   };
 
   // --- History Management ---
@@ -820,12 +813,32 @@ const App: React.FC = () => {
   if (!hasApiKey) {
       return (
           <div className="w-full h-screen bg-gray-950 flex flex-col items-center justify-center text-white relative">
-               <div className="bg-gray-900 border border-gray-800 p-8 rounded-2xl shadow-2xl flex flex-col items-center text-center">
-                    <Key className="text-blue-400 w-8 h-8 mb-4" />
-                    <h1 className="text-3xl font-bold mb-2">MoodFlow AI</h1>
-                    <p className="text-gray-400 mb-8">Access Gemini 3.0 Pro Image (Nano Banana Pro)</p>
-                    <button onClick={handleSelectKey} className="w-full py-4 bg-blue-600 hover:bg-blue-500 rounded-xl">Select API Key</button>
-                    <a href="https://ai.google.dev/gemini-api/docs/billing" className="mt-4 text-xs text-gray-600 underline">Billing Info</a>
+               <div className="bg-gray-900 border border-gray-800 p-8 rounded-2xl shadow-2xl flex flex-col items-center text-center max-w-md w-full mx-4">
+                    <Sparkles className="text-purple-400 w-10 h-10 mb-4" />
+                    <h1 className="text-3xl font-bold mb-2">Nanoflow Canvas</h1>
+                    <p className="text-gray-400 mb-6">AI-Powered Infinite Canvas with Gemini</p>
+
+                    <div className="w-full space-y-4">
+                      <input
+                        type="password"
+                        value={apiKeyInput}
+                        onChange={(e) => setApiKeyInput(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && handleSubmitApiKey()}
+                        placeholder="Enter your Gemini API Key"
+                        className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none"
+                      />
+                      <button
+                        onClick={handleSubmitApiKey}
+                        disabled={!apiKeyInput.trim() || isSubmitting}
+                        className="w-full py-3 bg-purple-600 hover:bg-purple-500 disabled:bg-gray-700 disabled:text-gray-500 rounded-xl font-medium transition-colors"
+                      >
+                        {isSubmitting ? 'Connecting...' : 'Start Creating'}
+                      </button>
+                    </div>
+
+                    <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer" className="mt-6 text-sm text-purple-400 hover:text-purple-300 underline">
+                      Get a free API key from Google AI Studio
+                    </a>
                </div>
           </div>
       );
