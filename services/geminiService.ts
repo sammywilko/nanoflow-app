@@ -45,9 +45,9 @@ const getAI = () => {
 
 // MODELS
 // Nano Banana Pro - gemini-3-pro-image-preview (latest image generation model, released Nov 2025)
-// Alternative: gemini-2.5-flash-image-preview (deprecated, shuts down Jan 15, 2026)
+// Alternative: gemini-3-flash-preview-image-preview (deprecated, shuts down Jan 15, 2026)
 const VISION_MODEL = 'gemini-3-pro-image-preview';
-const TEXT_MODEL = 'gemini-2.5-flash';
+const TEXT_MODEL = 'gemini-3-flash-preview';
 
 // Helper to handle base64 mime types correctly
 const getBase64Parts = (base64String: string) => {
