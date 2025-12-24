@@ -9,16 +9,22 @@ import Toolbar from './components/Toolbar';
 import ProjectSidebar from './components/ProjectSidebar';
 import PropertiesPanel from './components/PropertiesPanel';
 import PromptBar from './components/PromptBar';
-import { Sparkles } from 'lucide-react';
+import WorkflowCanvas from './components/WorkflowCanvas';
+import { Sparkles, GitBranch } from 'lucide-react';
 
 // Constants
 const MIN_SCALE = 0.1;
 const MAX_SCALE = 3;
 const GRID_SIZE = 24;
 
+type AppMode = 'canvas' | 'workflow';
+
 const App: React.FC = () => {
   // --- State ---
-  
+
+  // App Mode
+  const [appMode, setAppMode] = useState<AppMode>('canvas');
+
   // Project State
   const [projectPlan, setProjectPlan] = useState<ProjectPlan | null>(null);
   const [referenceImages, setReferenceImages] = useState<string[]>([]);
@@ -844,9 +850,25 @@ const App: React.FC = () => {
       );
   }
 
+  // Workflow Mode - Node-based editor
+  if (appMode === 'workflow') {
+    return <WorkflowCanvas onBack={() => setAppMode('canvas')} />;
+  }
+
   return (
     <div className="w-full h-screen bg-gray-950 overflow-hidden relative font-sans text-gray-100 select-none flex">
-      
+
+      {/* Mode Toggle Button - Fixed position */}
+      {!isPresentationMode && (
+        <button
+          onClick={() => setAppMode('workflow')}
+          className="fixed top-4 right-4 z-50 flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white rounded-lg shadow-lg transition-all"
+        >
+          <GitBranch className="w-4 h-4" />
+          <span className="text-sm font-medium">Workflow Mode</span>
+        </button>
+      )}
+
       {/* LEFT SIDEBAR (Project Workflow) */}
       {!isPresentationMode && (
           <ProjectSidebar 

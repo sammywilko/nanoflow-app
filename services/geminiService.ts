@@ -44,7 +44,9 @@ const getAI = () => {
 };
 
 // MODELS
-const VISION_MODEL = 'gemini-3-pro-image-preview'; // Nano Banana Pro
+// Nano Banana Pro - gemini-3-pro-image-preview (latest image generation model, released Nov 2025)
+// Alternative: gemini-2.5-flash-image-preview (deprecated, shuts down Jan 15, 2026)
+const VISION_MODEL = 'gemini-3-pro-image-preview';
 const TEXT_MODEL = 'gemini-2.5-flash';
 
 // Helper to handle base64 mime types correctly
@@ -163,20 +165,14 @@ export const planProject = async (brief: string, referenceImages: string[]): Pro
 };
 
 export const generateProjectShot = async (
-    shotDescription: string, 
-    styleKeywords: string[], 
+    shotDescription: string,
+    styleKeywords: string[],
     referenceImages: string[],
-    aspectRatio: string = "1:1",
-    imageSize: "1080p" | "1K" | "2K" | "4K" = "2K"
+    _aspectRatio: string = "1:1",
+    _imageSize: "1080p" | "1K" | "2K" | "4K" = "2K"
 ): Promise<string> => {
     return withRetry(async () => {
         const ai = getAI();
-        const parts: any[] = [];
-        
-        referenceImages.forEach(img => {
-            const { mimeType, data } = getBase64Parts(img);
-            parts.push({ inlineData: { mimeType, data } });
-        });
 
         const prompt = `
             GENERATE: ${shotDescription}
@@ -184,21 +180,23 @@ export const generateProjectShot = async (
             ${referenceImages.length > 0 ? 'IMPORTANT: Maintain strict facial/visual consistency with references.' : ''}
             Quality: High, Photorealistic.
         `;
-        parts.push({ text: prompt });
 
-        // Map 1080p to 2K as it's the closest bucket supported by the API
-        const apiImageSize = imageSize === "1080p" ? "2K" : imageSize;
+        let contents: any;
+        if (referenceImages.length > 0) {
+            const parts: any[] = [];
+            referenceImages.forEach(img => {
+                const { mimeType, data } = getBase64Parts(img);
+                parts.push({ inlineData: { mimeType, data } });
+            });
+            parts.push({ text: prompt });
+            contents = [{ parts }];
+        } else {
+            contents = prompt;
+        }
 
         const response = await ai.models.generateContent({
             model: VISION_MODEL,
-            contents: [{ parts }],
-            config: {
-                responseModalities: ['IMAGE'],
-                imageConfig: {
-                    aspectRatio: aspectRatio,
-                    imageSize: apiImageSize
-                }
-            }
+            contents: contents
         });
 
         for (const part of response.candidates?.[0]?.content?.parts || []) {
@@ -211,34 +209,32 @@ export const generateProjectShot = async (
 };
 
 export const generateGenericImage = async (
-    prompt: string, 
-    referenceImages: string[], 
-    aspectRatio: string = "1:1",
-    imageSize: "1080p" | "1K" | "2K" | "4K" = "2K"
+    prompt: string,
+    referenceImages: string[],
+    _aspectRatio: string = "1:1",
+    _imageSize: "1080p" | "1K" | "2K" | "4K" = "2K"
 ): Promise<string> => {
     return withRetry(async () => {
         const ai = getAI();
-        const parts: any[] = [];
-        
-        referenceImages.forEach(img => {
-            const { mimeType, data } = getBase64Parts(img);
-            parts.push({ inlineData: { mimeType, data } });
-        });
 
-        parts.push({ text: `${prompt}. High quality, detailed.` });
-
-        const apiImageSize = imageSize === "1080p" ? "2K" : imageSize;
+        // Build content based on whether we have reference images
+        let contents: any;
+        if (referenceImages.length > 0) {
+            const parts: any[] = [];
+            referenceImages.forEach(img => {
+                const { mimeType, data } = getBase64Parts(img);
+                parts.push({ inlineData: { mimeType, data } });
+            });
+            parts.push({ text: `${prompt}. High quality, detailed.` });
+            contents = [{ parts }];
+        } else {
+            // Simple text prompt - use string format like official docs
+            contents = `${prompt}. High quality, detailed.`;
+        }
 
         const response = await ai.models.generateContent({
             model: VISION_MODEL,
-            contents: [{ parts }],
-            config: {
-                responseModalities: ['IMAGE'],
-                imageConfig: {
-                    aspectRatio: aspectRatio,
-                    imageSize: apiImageSize
-                }
-            }
+            contents: contents
         });
 
         for (const part of response.candidates?.[0]?.content?.parts || []) {
